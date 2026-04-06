@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИльЯкласс - Ведущий</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo h1 { font-size: 48px; color: white; text-shadow: 3px 3px 0 rgba(0,0,0,0.2); }
+        .card {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .card h2 { margin-bottom: 20px; color: #333; }
+        .pin-box {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .pin-code {
+            font-size: 72px;
+            font-weight: bold;
+            letter-spacing: 15px;
+            background: white;
+            color: #10b981;
+            display: inline-block;
+            padding: 15px 40px;
+            border-radius: 20px;
+            font-family: monospace;
+        }
+        .pin-label { color: white; font-size: 18px; margin-top: 10px; display: block; }
+        .btn {
+            padding: 12px 24px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn-green { background: #10b981; }
+        .btn-red { background: #ef4444; }
+        .players-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .player-item {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 15px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .question-area {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 30px;
+            color: white;
+        }
+        .question-text { font-size: 32px; margin-bottom: 30px; }
+        .answers-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .answer-card {
+            padding: 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .answer-card:nth-child(1) { background: #e74c3c; }
+        .answer-card:nth-child(2) { background: #3498db; }
+        .answer-card:nth-child(3) { background: #f39c12; }
+        .answer-card:nth-child(4) { background: #2ecc71; }
+        .timer {
+            font-size: 60px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+        .leaderboard {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .podium-1 { font-size: 56px; color: #ffd700; }
+        .podium-2 { font-size: 42px; color: #c0c0c0; }
+        .podium-3 { font-size: 32px; color: #cd7f32; }
+        .json-editor {
+            width: 100%;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            margin: 15px 0;
+            resize: vertical;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #f1f5f9;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+        .tab.active {
+            background: #6366f1;
+            color: white;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🎮 ИльЯкласс</h1>
+            <p style="color:white;">Ведущий</p>
+        </div>
+
+        <div id="mainPanel" class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('create')">➕ Создать игру</div>
+                <div class="tab" onclick="showTab('my')">📚 Мои викторины</div>
+            </div>
+
+            <div id="createTab">
+                <h2>Создание викторины</h2>
+                <input type="text" id="hostName" class="json-editor" style="font-family:inherit;" placeholder="Твоё имя (Учитель)">
+                <textarea id="quizJson" class="json-editor" rows="6" placeholder='{
+  "title": "Моя викторина",
+  "questions": [
+    {
+      "text": "Сколько будет 2+2?",
+      "answers": ["3", "4", "5", "6"],
+      "correct": 1,
+      "time_limit": 10
+    }
+  ]
+}'></textarea>
+                <button class="btn" onclick="loadDemo()">📝 Демо-викторина</button>
+                <button class="btn btn-green" onclick="createGame()">🚀 Создать игру</button>
+            </div>
+
+            <div id="myTab" class="hidden">
+                <h2>Мои сохранённые викторины</h2>
+                <div id="savedQuizzesList">Нет сохранённых викторин</div>
+                <button class="btn" onclick="saveCurrentQuiz()">💾 Сохранить текущую</button>
+            </div>
+        </div>
+
+        <div id="gamePanel" class="hidden"></div>
+    </div>
+
+    <script>
+        const SB_URL = 'https://sekiunglzxycjkgraudd.supabase.co';
+        const SB_KEY = 'sb_publishable_k5F_fZwKqsbwpO-itXvT9Q_UhRc6svh';
+        const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+        
+        let currentGame = null;
+        let currentQuiz = null;
+        let players = [];
+        let currentQuestionIndex = 0;
+        let questionActive = false;
+        let answeredPlayers = new Set();
+        let timerInterval = null;
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (tab === 'create') {
+                document.getElementById('createTab').classList.remove('hidden');
+                document.getElementById('myTab').classList.add('hidden');
+                document.querySelector('.tab').classList.add('active');
+            } else {
+                document.getElementById('createTab').classList.add('hidden');
+                document.getElementById('myTab').classList.remove('hidden');
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                loadSavedQuizzes();
+            }
+        }
+        
+        function loadDemo() {
+            const demo = {
+                title: "Демо викторина",
+                questions: [
+                    { text: "Сколько будет 2 + 2?", answers: ["3", "4", "5", "6"], correct: 1, time_limit: 10 },
+                    { text: "Столица России?", answers: ["СПб", "Москва", "Новосибирск", "Казань"], correct: 1, time_limit: 10 },
+                    { text: "Какой цвет у неба?", answers: ["Красный", "Жёлтый", "Голубой", "Зелёный"], correct: 2, time_limit: 10 }
+                ]
+            };
+            document.getElementById('quizJson').value = JSON.stringify(demo, null, 2);
+        }
+        
+        function generatePin() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+        
+        async function createGame() {
+            const hostName = document.getElementById('hostName').value.trim();
+            const quizText = document.getElementById('quizJson').value.trim();
+            
+            if (!hostName) { alert('Введи своё имя'); return; }
+            if (!quizText) { alert('Введи JSON викторины'); return; }
+            
+            try {
+                currentQuiz = JSON.parse(quizText);
+                if (!currentQuiz.questions || currentQuiz.questions.length === 0) throw new Error();
+            } catch(e) {
+                alert('Ошибка в JSON викторины');
+                return;
+            }
+            
+            const pin = generatePin();
+            const gameId = 'game_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+            
+            // Создаём игру
+            const { error: gameError } = await supabase.from('game_sessions').insert({
+                id: gameId, pin: pin, host_id: 'host_' + Date.now(),
+                host_name: hostName, quiz_title: currentQuiz.title,
+                total_questions: currentQuiz.questions.length, status: 'waiting'
+            });
+            if (gameError) { alert('Ошибка: ' + gameError.message); return; }
+            
+            // Создаём вопросы
+            for (let i = 0; i < currentQuiz.questions.length; i++) {
+                const q = currentQuiz.questions[i];
+                await supabase.from('game_questions').insert({
+                    id: 'q_' + gameId + '_' + i, game_id: gameId,
+                    question_index: i, question_text: q.text,
+                    answers: q.answers, correct_answer: q.correct,
+                    time_limit: q.time_limit || 15
+                });
+            }
+            
+            currentGame = { gameId, pin, quiz: currentQuiz };
+            startGameLobby();
+        }
+        
+        async function startGameLobby() {
+            document.getElementById('mainPanel').classList.add('hidden');
+            document.getElementById('gamePanel').classList.remove('hidden');
+            
+            document.getElementById('gamePanel').innerHTML = `
+                <div class="card">
+                    <div class="pin-box">
+                        <div class="pin-code">${currentGame.pin}</div>
+                        <div class="pin-label">СКАЖИ ЭТОТ КОД ИГРОКАМ</div>
+                        <div style="margin-top:15px;">
+                            <button class="btn" onclick="copyPin()">📋 Копировать PIN</button>
+                        </div>
+                    </div>
+                    
+                    <h3>Игроки ( <span id="playerCount">0</span> )</h3>
+                    <div id="playersList" class="players-list"></div>
+                    
+                    <button class="btn btn-green" id="startBtn" onclick="startGame()" disabled>🎮 Начать игру</button>
+                </div>
+            `;
+            
+            // Подписываемся на игроков
+            supabase
+                .channel('lobby_players')
+                .on('postgres_changes', {
+                    event: '*', schema: 'public', table: 'game_players',
+                    filter: `game_id=eq.${currentGame.gameId}`
+                }, () => loadPlayers())
+                .subscribe();
+            
+            await loadPlayers();
+        }
+        
+        async function loadPlayers() {
+            const { data } = await supabase
+                .from('game_players')
+                .select('*')
+                .eq('game_id', currentGame.gameId);
+            
+            players = data || [];
+            document.getElementById('playerCount').innerHTML = players.length;
+            document.getElementById('playersList').innerHTML = players.map(p => `
+                <div class="player-item">${escapeHtml(p.player_name)}</div>
+            `).join('');
+            
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn) startBtn.disabled = players.length === 0;
+        }
+        
+        function copyPin() {
+            navigator.clipboard.writeText(currentGame.pin);
+            alert('PIN скопирован!');
+        }
+        
+        async function startGame() {
+            if (players.length === 0) { alert('Нет игроков!'); return; }
+            currentQuestionIndex = 0;
+            await startQuestion();
+        }
+        
+        async function startQuestion() {
+            if (currentQuestionIndex >= currentGame.quiz.questions.length) {
+                showFinalResults();
+                return;
+            }
+            
+            questionActive = true;
+            answeredPlayers.clear();
+            
+            const question = currentGame.quiz.questions[currentQuestionIndex];
+            const dbQuestion = await getDbQuestion(currentQuestionIndex);
+            
+            await supabase.from('game_sessions').update({
+                status: 'active', current_question_index: currentQuestionIndex
+            }).eq('id', currentGame.gameId);
+            
+            await supabase.from('game_questions').update({
+                started_at: new Date().toISOString()
+            }).eq('id', dbQuestion.id);
+            
+            // Подписываемся на ответы
+            supabase
+                .channel('game_answers')
+                .on('postgres_changes', {
+                    event: 'INSERT', schema: 'public', table: 'game_answers',
+                    filter: `game_id=eq.${currentGame.gameId}`
+                }, (payload) => onNewAnswer(payload.new))
+                .subscribe();
+            
+            showQuestionScreen(question);
+        }
+        
+        async function getDbQuestion(index) {
+            const { data } = await supabase
+                .from('game_questions')
+                .select('id')
+                .eq('game_id', currentGame.gameId)
+                .eq('question_index', index)
+                .single();
+            return data;
+        }
+        
+        function showQuestionScreen(question) {
+            document.getElementById('gamePanel').innerHTML = `
+                <div class="question-area">
+                    <div class="question-text">${escapeHtml(question.text)}</div>
+                    <div class="answers-grid">
+                        ${question.answers.map((ans, i) => `
+                            <div class="answer-card" style="background: ${['#e74c3c','#3498db','#f39c12','#2ecc71'][i]}">
+                                ${String.fromCharCode(65+i)}. ${escapeHtml(ans)}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="timer" id="timer">${question.time_limit || 15}</div>
+                    <div id="answerStats">✅ Ответов: 0 / ${players.length}</div>
+                </div>
+                <div class="leaderboard" id="leaderboard"></div>
+            `;
+            
+            let timeLeft = question.time_limit || 15;
+            const timerEl = document.getElementById('timer');
+            
+            timerInterval = setInterval(async () => {
+                timeLeft--;
+                if (timerEl) timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    await finishQuestion();
+                }
+            }, 1000);
+            
+            updateLeaderboard();
+        }
+        
+        async function onNewAnswer(answer) {
+            if (!questionActive) return;
+            if (answeredPlayers.has(answer.player_id)) return;
+            
+            answeredPlayers.add(answer.player_id);
+            
+            const question = currentGame.quiz.questions[currentQuestionIndex];
+            const isCorrect = (answer.answer_index === question.correct);
+            
+            let points = 0;
+            if (isCorrect && answer.response_time_ms) {
+                const maxPoints = 1000;
+                const timeLimit = (question.time_limit || 15) * 1000;
+                points = Math.round(maxPoints * (1 - answer.response_time_ms / timeLimit));
+                points = Math.max(100, Math.min(1000, points));
+            }
+            
+            await supabase.from('game_answers').update({
+                is_correct: isCorrect, points_earned: points
+            }).eq('id', answer.id);
+            
+            const player = players.find(p => p.id === answer.player_id);
+            if (player) {
+                const newScore = (player.score || 0) + points;
+                await supabase.from('game_players').update({ score: newScore }).eq('id', answer.player_id);
+            }
+            
+            document.getElementById('answerStats').innerHTML = `✅ Ответов: ${answeredPlayers.size} / ${players.length}`;
+            await loadPlayers();
+            updateLeaderboard();
+        }
+        
+        async function updateLeaderboard() {
+            const { data } = await supabase
+                .from('game_players')
+                .select('player_name, score')
+                .eq('game_id', currentGame.gameId)
+                .order('score', { ascending: false });
+            
+            const leaderboardDiv = document.getElementById('leaderboard');
+            if (leaderboardDiv && data) {
+                leaderboardDiv.innerHTML = `<h3>🏆 Таблица лидеров</h3>` + 
+                    data.slice(0, 10).map((p, i) => `
+                        <div class="leaderboard-item">
+                            <span>${i+1}. ${escapeHtml(p.player_name)}</span>
+                            <span style="font-weight:bold; color:#10b981;">${p.score}⭐</span>
+                        </div>
+                    `).join('');
+            }
+        }
+        
+        async function finishQuestion() {
+            questionActive = false;
+            clearInterval(timerInterval);
+            
+            const question = currentGame.quiz.questions[currentQuestionIndex];
+            const correctLetter = String.fromCharCode(65 + question.correct);
+            
+            document.getElementById('gamePanel').innerHTML += `
+                <div style="position:fixed; bottom:20px; left:20px; right:20px; background:rgba(0,0,0,0.95); border-radius:20px; padding:20px; text-align:center; z-index:100;">
+                    <div style="font-size:24px;">✅ Правильный ответ: ${correctLetter}. ${escapeHtml(question.answers[question.correct])}</div>
+                    <button class="btn btn-green" onclick="nextQuestion()" style="margin-top:15px;">Следующий вопрос ➡</button>
+                </div>
+            `;
+            
+            await loadPlayers();
+            updateLeaderboard();
+        }
+        
+        async function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < currentGame.quiz.questions.length) {
+                await startQuestion();
+            } else {
+                showFinalResults();
+            }
+        }
+        
+        async function showFinalResults() {
+            await supabase.from('game_sessions').update({ status: 'ended' }).eq('id', currentGame.gameId);
+            
+            const { data: finalPlayers } = await supabase
+                .from('game_players')
+                .select('player_name, score')
+                .eq('game_id', currentGame.gameId)
+                .order('score', { ascending: false });
+            
+            const top3 = finalPlayers?.slice(0, 3) || [];
+            
+            document.getElementById('gamePanel').innerHTML = `
+                <div class="card" style="text-align:center;">
+                    <h1 style="font-size:48px;">🏆 ИГРА ОКОНЧЕНА! 🏆</h1>
+                    <div class="podium">
+                        ${top3[1] ? `<div><div class="podium-2">🥈</div><div>${escapeHtml(top3[1].player_name)}</div><div>${top3[1].score}⭐</div></div>` : ''}
+                        ${top3[0] ? `<div><div class="podium-1">🥇</div><div>${escapeHtml(top3[0].player_name)}</div><div>${top3[0].score}⭐</div></div>` : ''}
+                        ${top3[2] ? `<div><div class="podium-3">🥉</div><div>${escapeHtml(top3[2].player_name)}</div><div>${top3[2].score}⭐</div></div>` : ''}
+                    </div>
+                    <button class="btn btn-green" onclick="location.reload()">🎮 Новая игра</button>
+                    <button class="btn" onclick="location.href='index.html'">🏠 На главную</button>
+                </div>
+                <div class="leaderboard">
+                    ${finalPlayers?.map((p,i) => `
+                        <div class="leaderboard-item"><span>${i+1}. ${escapeHtml(p.player_name)}</span><span>${p.score}⭐</span></div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function saveCurrentQuiz() {
+            const quizText = document.getElementById('quizJson').value.trim();
+            if (!quizText) { alert('Нет викторины для сохранения'); return; }
+            localStorage.setItem('savedQuiz_' + Date.now(), quizText);
+            alert('✅ Викторина сохранена!');
+            loadSavedQuizzes();
+        }
+        
+        function loadSavedQuizzes() {
+            const saved = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('savedQuiz_')) {
+                    saved.push({ key, data: localStorage.getItem(key) });
+                }
+            }
+            
+            if (saved.length === 0) {
+                document.getElementById('savedQuizzesList').innerHTML = 'Нет сохранённых викторин';
+                return;
+            }
+            
+            document.getElementById('savedQuizzesList').innerHTML = saved.map((s, idx) => `
+                <div style="background:#f1f5f9; padding:10px; border-radius:15px; margin-bottom:10px;">
+                    <div style="font-size:12px; font-family:monospace;">${s.data.substring(0, 100)}...</div>
+                    <button class="btn" style="margin-top:10px;" onclick="loadSavedQuiz('${s.key}')">📂 Загрузить</button>
+                    <button class="btn btn-red" onclick="deleteSavedQuiz('${s.key}')">🗑 Удалить</button>
+                </div>
+            `).join('');
+        }
+        
+        function loadSavedQuiz(key) {
+            const quiz = localStorage.getItem(key);
+            if (quiz) {
+                document.getElementById('quizJson').value = quiz;
+                showTab('create');
+                alert('✅ Викторина загружена!');
+            }
+        }
+        
+        function deleteSavedQuiz(key) {
+            localStorage.removeItem(key);
+            loadSavedQuizzes();
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m]));
+        }
+        
+        window.createGame = createGame;
+        window.startGame = startGame;
+        window.nextQuestion = nextQuestion;
+        window.copyPin = copyPin;
+        window.loadDemo = loadDemo;
+        window.saveCurrentQuiz = saveCurrentQuiz;
+        window.loadSavedQuiz = loadSavedQuiz;
+        window.deleteSavedQuiz = deleteSavedQuiz;
+        window.showTab = showTab;
+    </script>
+</body>
+</html>
