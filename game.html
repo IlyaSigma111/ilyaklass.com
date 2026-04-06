@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИльЯкласс - Игра</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f, #2d2d44);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* PIN панель */
+        .pin-panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .pin-code {
+            font-size: 64px;
+            font-weight: 700;
+            letter-spacing: 16px;
+            background: white;
+            color: #10b981;
+            display: inline-block;
+            padding: 16px 32px;
+            border-radius: 24px;
+            font-family: monospace;
+            margin-bottom: 12px;
+        }
+
+        .pin-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Игроки */
+        .players-panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .players-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .player-card {
+            background: rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Вопрос */
+        .question-panel {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .question-text {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 32px;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .answer-card {
+            padding: 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .answer-red { background: #e74c3c; }
+        .answer-blue { background: #3498db; }
+        .answer-yellow { background: #f39c12; }
+        .answer-green { background: #2ecc71; }
+
+        .timer {
+            font-size: 56px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+
+        .stats {
+            font-size: 14px;
+            margin-top: 16px;
+            opacity: 0.8;
+        }
+
+        /* Таблица лидеров */
+        .leaderboard-panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 24px;
+        }
+
+        .leaderboard-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Кнопки */
+        .btn {
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .next-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #10b981;
+            color: white;
+            padding: 16px 32px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Подиум */
+        .podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 40px;
+            margin: 40px 0;
+        }
+
+        .podium-1 { font-size: 56px; color: #ffd700; }
+        .podium-2 { font-size: 42px; color: #c0c0c0; }
+        .podium-3 { font-size: 32px; color: #cd7f32; }
+
+        .hidden {
+            display: none;
+        }
+
+        .waiting-screen {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .spinner {
+            font-size: 48px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="app"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://sekiunglzxycjkgraudd.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_k5F_fZwKqsbwpO-itXvT9Q_UhRc6svh';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let gameData = null;
+        let currentGameId = null;
+        let currentPin = null;
+        let currentQuestionIndex = 0;
+        let players = [];
+        let answeredPlayers = new Set();
+        let timerInterval = null;
+        let questionActive = false;
+
+        // Загрузка данных игры из localStorage
+        function loadGameData() {
+            const saved = localStorage.getItem('currentGame');
+            if (!saved) {
+                window.location.href = 'index.html';
+                return;
+            }
+            gameData = JSON.parse(saved);
+            createGame();
+        }
+
+        // Создание игры в Supabase
+        async function createGame() {
+            currentPin = Math.floor(1000 + Math.random() * 9000).toString();
+            currentGameId = 'game_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+
+            // Создаём игровую сессию
+            const { error } = await supabase
+                .from('game_sessions')
+                .insert({
+                    id: currentGameId,
+                    pin: currentPin,
+                    host_id: 'host_' + Date.now(),
+                    host_name: 'Учитель',
+                    quiz_title: gameData.quizTitle,
+                    total_questions: gameData.questions.length,
+                    status: 'waiting'
+                });
+
+            if (error) {
+                alert('Ошибка создания игры: ' + error.message);
+                return;
+            }
+
+            // Создаём вопросы
+            for (let i = 0; i < gameData.questions.length; i++) {
+                const q = gameData.questions[i];
+                await supabase
+                    .from('game_questions')
+                    .insert({
+                        id: 'q_' + currentGameId + '_' + i,
+                        game_id: currentGameId,
+                        question_index: i,
+                        question_text: q.text,
+                        answers: q.answers,
+                        correct_answer: q.correct,
+                        time_limit: q.time_limit || 15
+                    });
+            }
+
+            startLobby();
+        }
+
+        // Лобби ожидания
+        async function startLobby() {
+            renderLobby();
+
+            // Подписка на игроков
+            supabase
+                .channel('lobby')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'game_players',
+                    filter: `game_id=eq.${currentGameId}`
+                }, () => loadPlayers())
+                .subscribe();
+
+            await loadPlayers();
+        }
+
+        function renderLobby() {
+            document.getElementById('app').innerHTML = `
+                <div class="pin-panel">
+                    <div class="pin-code">${currentPin}</div>
+                    <div class="pin-label">СКАЖИТЕ ЭТОТ КОД УЧЕНИКАМ</div>
+                    <button class="btn btn-primary" onclick="copyPin()" style="margin-top: 16px;">📋 Копировать PIN</button>
+                </div>
+                <div class="players-panel">
+                    <div class="players-title">👥 Подключились (<span id="playerCount">0</span>)</div>
+                    <div id="playersList" class="players-grid"></div>
+                </div>
+                <div style="text-align: center;">
+                    <button id="startGameBtn" class="btn btn-success" onclick="startFirstQuestion()" disabled>🎮 Начать игру</button>
+                </div>
+            `;
+        }
+
+        async function loadPlayers() {
+            const { data } = await supabase
+                .from('game_players')
+                .select('*')
+                .eq('game_id', currentGameId);
+
+            players = data || [];
+            
+            const playerCountEl = document.getElementById('playerCount');
+            const playersListEl = document.getElementById('playersList');
+            const startBtn = document.getElementById('startGameBtn');
+
+            if (playerCountEl) playerCountEl.textContent = players.length;
+            if (playersListEl) {
+                playersListEl.innerHTML = players.map(p => `
+                    <div class="player-card">${escapeHtml(p.player_name)}</div>
+                `).join('');
+            }
+            if (startBtn) startBtn.disabled = players.length === 0;
+        }
+
+        function copyPin() {
+            navigator.clipboard.writeText(currentPin);
+            alert('PIN скопирован!');
+        }
+
+        async function startFirstQuestion() {
+            if (players.length === 0) {
+                alert('Нет подключённых игроков');
+                return;
+            }
+            currentQuestionIndex = 0;
+            await startQuestion();
+        }
+
+        async function startQuestion() {
+            if (currentQuestionIndex >= gameData.questions.length) {
+                showFinalResults();
+                return;
+            }
+
+            questionActive = true;
+            answeredPlayers.clear();
+
+            const question = gameData.questions[currentQuestionIndex];
+
+            // Обновляем статус игры
+            await supabase
+                .from('game_sessions')
+                .update({
+                    status: 'active',
+                    current_question_index: currentQuestionIndex
+                })
+                .eq('id', currentGameId);
+
+            // Отмечаем время начала вопроса
+            const { data: dbQuestion } = await supabase
+                .from('game_questions')
+                .select('id')
+                .eq('game_id', currentGameId)
+                .eq('question_index', currentQuestionIndex)
+                .single();
+
+            if (dbQuestion) {
+                await supabase
+                    .from('game_questions')
+                    .update({ started_at: new Date().toISOString() })
+                    .eq('id', dbQuestion.id);
+            }
+
+            // Подписываемся на ответы
+            if (window.answersChannel) {
+                supabase.removeChannel(window.answersChannel);
+            }
+
+            window.answersChannel = supabase
+                .channel('answers')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'game_answers',
+                    filter: `game_id=eq.${currentGameId}`
+                }, (payload) => onNewAnswer(payload.new))
+                .subscribe();
+
+            renderQuestion(question);
+        }
+
+        function renderQuestion(question) {
+            const colors = ['answer-red', 'answer-blue', 'answer-yellow', 'answer-green'];
+            
+            document.getElementById('app').innerHTML = `
+                <div class="question-panel">
+                    <div class="question-text">${escapeHtml(question.text)}</div>
+                    <div class="answers-grid">
+                        ${question.answers.map((ans, i) => `
+                            <div class="answer-card ${colors[i]}">
+                                ${String.fromCharCode(65+i)}. ${escapeHtml(ans)}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="timer" id="timer">${question.time_limit || 15}</div>
+                    <div class="stats" id="answerStats">✅ Ответов: 0 / ${players.length}</div>
+                </div>
+                <div class="leaderboard-panel" id="leaderboard">
+                    <div class="leaderboard-title">🏆 Таблица лидеров</div>
+                    <div id="leaderboardList">Загрузка...</div>
+                </div>
+            `;
+
+            // Таймер
+            let timeLeft = question.time_limit || 15;
+            const timerEl = document.getElementById('timer');
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(async () => {
+                timeLeft--;
+                if (timerEl) timerEl.textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    await finishQuestion();
+                }
+            }, 1000);
+
+            updateLeaderboard();
+        }
+
+        async function onNewAnswer(answer) {
+            if (!questionActive) return;
+            if (answeredPlayers.has(answer.player_id)) return;
+
+            answeredPlayers.add(answer.player_id);
+
+            const question = gameData.questions[currentQuestionIndex];
+            const isCorrect = (answer.answer_index === question.correct);
+
+            // Расчёт очков за скорость
+            let points = 0;
+            if (isCorrect && answer.response_time_ms) {
+                const maxPoints = 1000;
+                const timeLimit = (question.time_limit || 15) * 1000;
+                points = Math.round(maxPoints * (1 - answer.response_time_ms / timeLimit));
+                points = Math.max(100, Math.min(1000, points));
+            }
+
+            // Обновляем ответ
+            await supabase
+                .from('game_answers')
+                .update({
+                    is_correct: isCorrect,
+                    points_earned: points
+                })
+                .eq('id', answer.id);
+
+            // Обновляем счёт игрока
+            const player = players.find(p => p.id === answer.player_id);
+            if (player) {
+                const newScore = (player.score || 0) + points;
+                await supabase
+                    .from('game_players')
+                    .update({ score: newScore })
+                    .eq('id', answer.player_id);
+            }
+
+            // Обновляем статистику
+            const statsEl = document.getElementById('answerStats');
+            if (statsEl) {
+                statsEl.textContent = `✅ Ответов: ${answeredPlayers.size} / ${players.length}`;
+            }
+
+            await loadPlayers();
+            updateLeaderboard();
+        }
+
+        async function updateLeaderboard() {
+            const { data } = await supabase
+                .from('game_players')
+                .select('player_name, score')
+                .eq('game_id', currentGameId)
+                .order('score', { ascending: false });
+
+            const leaderboardEl = document.getElementById('leaderboardList');
+            if (leaderboardEl && data) {
+                leaderboardEl.innerHTML = data.slice(0, 10).map((p, i) => `
+                    <div class="leaderboard-item">
+                        <span>${i+1}. ${escapeHtml(p.player_name)}</span>
+                        <span style="font-weight: bold; color: #ffd700;">${p.score}⭐</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function finishQuestion() {
+            questionActive = false;
+            clearInterval(timerInterval);
+
+            const question = gameData.questions[currentQuestionIndex];
+            const correctLetter = String.fromCharCode(65 + question.correct);
+
+            // Показываем правильный ответ и кнопку "Далее"
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'next-btn';
+            nextBtn.innerHTML = 'Следующий вопрос ➡';
+            nextBtn.onclick = () => {
+                nextBtn.remove();
+                nextQuestion();
+            };
+            document.body.appendChild(nextBtn);
+
+            // Добавляем информацию о правильном ответе
+            const answerInfo = document.createElement('div');
+            answerInfo.style.cssText = 'position: fixed; bottom: 100px; left: 20px; right: 20px; background: rgba(0,0,0,0.9); border-radius: 20px; padding: 16px; text-align: center; z-index: 100;';
+            answerInfo.innerHTML = `✅ Правильный ответ: ${correctLetter}. ${escapeHtml(question.answers[question.correct])}`;
+            document.body.appendChild(answerInfo);
+
+            setTimeout(() => answerInfo.remove(), 3000);
+
+            await loadPlayers();
+            updateLeaderboard();
+        }
+
+        async function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < gameData.questions.length) {
+                await startQuestion();
+            } else {
+                showFinalResults();
+            }
+        }
+
+        async function showFinalResults() {
+            await supabase
+                .from('game_sessions')
+                .update({ status: 'ended' })
+                .eq('id', currentGameId);
+
+            const { data: finalPlayers } = await supabase
+                .from('game_players')
+                .select('player_name, score')
+                .eq('game_id', currentGameId)
+                .order('score', { ascending: false });
+
+            const top3 = finalPlayers?.slice(0, 3) || [];
+
+            document.getElementById('app').innerHTML = `
+                <div class="pin-panel">
+                    <h1 style="font-size: 48px;">🏆 ИГРА ОКОНЧЕНА! 🏆</h1>
+                    <div class="podium">
+                        ${top3[1] ? `<div style="text-align:center;"><div class="podium-2">🥈</div><div>${escapeHtml(top3[1].player_name)}</div><div>${top3[1].score}⭐</div></div>` : ''}
+                        ${top3[0] ? `<div style="text-align:center;"><div class="podium-1">🥇</div><div>${escapeHtml(top3[0].player_name)}</div><div>${top3[0].score}⭐</div></div>` : ''}
+                        ${top3[2] ? `<div style="text-align:center;"><div class="podium-3">🥉</div><div>${escapeHtml(top3[2].player_name)}</div><div>${top3[2].score}⭐</div></div>` : ''}
+                    </div>
+                    <button class="btn btn-primary" onclick="window.location.href='index.html'">🏠 В меню</button>
+                </div>
+                <div class="leaderboard-panel">
+                    <div class="leaderboard-title">📊 Итоговая таблица</div>
+                    ${finalPlayers?.map((p, i) => `
+                        <div class="leaderboard-item">
+                            <span>${i+1}. ${escapeHtml(p.player_name)}</span>
+                            <span style="font-weight: bold; color: #ffd700;">${p.score}⭐</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+        }
+
+        window.copyPin = copyPin;
+        window.startFirstQuestion = startFirstQuestion;
+
+        loadGameData();
+    </script>
+</body>
+</html>
